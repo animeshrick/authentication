@@ -1,12 +1,15 @@
 from django.core.exceptions import ObjectDoesNotExist
 
-from auth_api.auth_exceptions.user_exceptions import UserNotFoundError
+from auth_api.auth_exceptions.user_exceptions import UserNotFoundError, PasswordNotMatchError
 from auth_api.export_types.request_data_types.login_user import LoginRequestType
 from auth_api.export_types.request_data_types.register_user import RegisterUserRequestType
+from auth_api.export_types.request_data_types.update_password import UpdatePasswordRequestType
 from auth_api.export_types.user_types.export_user import ExportUser
 from auth_api.models.user_models.user import User
 from auth_api.serializers.forgor_password_serializer import ForgotPasswordSerializer
 from auth_api.serializers.user_serializer import UserSerializer
+from auth_api.services.encryption_services.encryption_service import EncryptionServices
+from auth_api.services.helpers import validate_password_for_password_change
 
 
 class AuthServices:
@@ -123,21 +126,22 @@ class AuthServices:
     #     reset_url = f"{FRONTEND_BASE_URL}/password-reset/{token}/"
     #     return reset_url
     #
-    # @staticmethod
-    # def change_password(uid: str, request_data: ChangePasswordRequestType):
-    #     user = User.objects.get(id=uid, is_deleted=False)
-    #     if request_data.password1 and request_data.password2:
-    #         if validate_password_for_password_change(
-    #             request_data.password1, request_data.password2
-    #         ).is_validated:
-    #             user.password = EncryptionServices().encrypt(request_data.password1)
-    #             user.save()
-    #         else:
-    #             raise PasswordNotMatchError(
-    #                 "Passwords are not matching or not in correct format."
-    #             )
-    #     else:
-    #         raise ValueError("Please provide both the passwords.")
+    @staticmethod
+    def change_password(request_data: UpdatePasswordRequestType):
+        user_id: str = request_data.user_id
+        user = User.objects.get(id=user_id, is_deleted=False)
+        if request_data.password1 and request_data.password2:
+            if validate_password_for_password_change(
+                request_data.password1, request_data.password2
+            ).is_validated:
+                user.password = EncryptionServices().encrypt(request_data.password1)
+                user.save()
+            else:
+                raise PasswordNotMatchError(
+                    "Passwords are not matching or not in correct format."
+                )
+        else:
+            raise ValueError("Please provide both the passwords.")
     #
     # @staticmethod
     # def update_user_profile(
