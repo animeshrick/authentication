@@ -1,6 +1,7 @@
 import re
 import uuid
 from datetime import datetime
+from dateutil.parser import parse
 
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -157,8 +158,8 @@ def validate_password_for_password_change(
         )
 
 
-# def string_to_datetime(date_str: str) -> datetime:
-#     return parse(date_str)
+def string_to_datetime(date_str: str) -> datetime:
+    return parse(date_str)
 
 
 def validate_dob(dob: datetime) -> ValidationResult:
@@ -186,6 +187,17 @@ def validate_phone(phone: str) -> ValidationResult:
     else:
         return ValidationResult(
             is_validated=False, error="Phone number is not in valid format."
+        )
+
+
+def validate_address(address: str) -> ValidationResult:
+    # Allows letters, numbers, commas, hyphens, periods, slashes, and spaces
+    pattern = re.compile(r"^[\w\s.,#\-/]{5,100}$")
+    if pattern.match(address):
+        return ValidationResult(is_validated=True, error=None)
+    else:
+        return ValidationResult(
+            is_validated=False, error="Address is not in valid format."
         )
 
 

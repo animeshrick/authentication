@@ -4,12 +4,14 @@ from auth_api.auth_exceptions.user_exceptions import UserNotFoundError, Password
 from auth_api.export_types.request_data_types.login_user import LoginRequestType
 from auth_api.export_types.request_data_types.register_user import RegisterUserRequestType
 from auth_api.export_types.request_data_types.update_password import UpdatePasswordRequestType
+from auth_api.export_types.request_data_types.update_user_profile import UpdateUserProfileRequestType
 from auth_api.export_types.user_types.export_user import ExportUser
 from auth_api.models.user_models.user import User
 from auth_api.serializers.forgor_password_serializer import ForgotPasswordSerializer
 from auth_api.serializers.user_serializer import UserSerializer
 from auth_api.services.encryption_services.encryption_service import EncryptionServices
-from auth_api.services.helpers import validate_password_for_password_change
+from auth_api.services.helpers import validate_password_for_password_change, validate_phone, validate_dob, \
+    validate_name, string_to_datetime, validate_address
 
 
 class AuthServices:
@@ -142,53 +144,63 @@ class AuthServices:
                 )
         else:
             raise ValueError("Please provide both the passwords.")
-    #
-    # @staticmethod
-    # def update_user_profile(
-    #     uid: str, request_data: UpdateUserProfileRequestType
-    # ) -> ExportUser:
-    #     user = User.objects.get(id=uid, is_deleted=False)
-    #     if (
-    #         request_data.image
-    #         and isinstance(request_data.image, str)
-    #         and request_data.image != ""
-    #         and request_data.image != user.image
-    #     ):
-    #         user.image = request_data.image
-    #     if (
-    #         request_data.name
-    #         and isinstance(request_data.name, str)
-    #         and request_data.name != ""
-    #         and request_data.name != user.name
-    #     ):
-    #         if validate_name(request_data.name).is_validated:
-    #             user.name = request_data.name
-    #         else:
-    #             raise ValueError("Name is not in correct format.")
-    #     if (
-    #         request_data.dob
-    #         and isinstance(request_data.dob, str)
-    #         and request_data.dob != ""
-    #         and request_data.dob != user.dob
-    #     ):
-    #         dob = string_to_datetime(request_data.dob)
-    #         if validate_dob(dob).is_validated:
-    #             user.dob = dob
-    #         else:
-    #             raise ValueError(validate_dob(dob).error)
-    #     if (
-    #         request_data.phone
-    #         and isinstance(request_data.phone, str)
-    #         and request_data.phone != ""
-    #         and request_data.phone != user.phone
-    #     ):
-    #         if validate_phone(phone=request_data.phone).is_validated:
-    #             user.phone = request_data.phone
-    #         else:
-    #             raise ValueError(validate_phone(phone=request_data.phone).error)
-    #     user.save()
-    #     return ExportUser(**user.model_to_dict())
-    #
+
+    @staticmethod
+    def update_user_profile(
+        uid: str, request_data: UpdateUserProfileRequestType
+    ) -> ExportUser:
+        user = User.objects.get(id=uid, is_deleted=False)
+        if (
+            request_data.image
+            and isinstance(request_data.image, str)
+            and request_data.image != ""
+            and request_data.image != user.image
+        ):
+            user.image = request_data.image
+        if (
+            request_data.name
+            and isinstance(request_data.name, str)
+            and request_data.name != ""
+            and request_data.name != user.name
+        ):
+            if validate_name(request_data.name).is_validated:
+                user.name = request_data.name
+            else:
+                raise ValueError("Name is not in correct format.")
+        if (
+            request_data.dob
+            and isinstance(request_data.dob, str)
+            and request_data.dob != ""
+            and request_data.dob != user.dob
+        ):
+            dob = string_to_datetime(request_data.dob)
+            if validate_dob(dob).is_validated:
+                user.dob = dob
+            else:
+                raise ValueError(validate_dob(dob).error)
+        if (
+            request_data.phone
+            and isinstance(request_data.phone, str)
+            and request_data.phone != ""
+            and request_data.phone != user.phone
+        ):
+            if validate_phone(phone=request_data.phone).is_validated:
+                user.phone = request_data.phone
+            else:
+                raise ValueError(validate_phone(phone=request_data.phone).error)
+        if (
+            request_data.address
+            and isinstance(request_data.address, str)
+            and request_data.address != ""
+            and request_data.address != user.address
+        ):
+            if validate_address(address=request_data.address).is_validated:
+                user.address = request_data.address
+            else:
+                raise ValueError(validate_address(address=request_data.address).error)
+        user.save()
+        return ExportUser(**user.model_to_dict())
+
     @staticmethod
     def get_user_details(uid: str) -> ExportUser:
         user = User.objects.get(id=uid, is_deleted=False, is_active=True)

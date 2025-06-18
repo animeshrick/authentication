@@ -4,8 +4,8 @@ from pydantic import BaseModel
 
 
 class UpdateUserProfileRequestType(BaseModel):
-    fname: Optional[str] = None
-    lname: Optional[str] = None
+    name: Optional[str] = None
+    address: Optional[str] = None
     dob: Optional[str] = None
     phone: Optional[str] = None
     image: Optional[str] = None
