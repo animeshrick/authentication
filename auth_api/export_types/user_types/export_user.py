@@ -1,5 +1,5 @@
 import datetime
-import typing
+from typing import List
 from typing import Optional
 from uuid import UUID
 
@@ -30,4 +30,4 @@ class ExportUser(BaseModel):
 
 
 class ExportUserList(BaseModel):
-    user_list: typing.List[ExportUser]
+    user_list: List[ExportUser]
