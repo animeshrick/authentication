@@ -11,7 +11,7 @@ from product.models.product import Product
 
 User = get_user_model()
 
-class CartCreateUpdateSerializer(serializers.Serializer):
+class CartCreateUpdateSerializer(serializers.ModelSerializer):
 
     """
     What cart serializer do
