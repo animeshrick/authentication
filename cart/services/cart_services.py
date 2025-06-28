@@ -2,15 +2,16 @@ from auth_api.models.user_models.user import User
 from cart.export_types.export_cart.export_cart import ExportCart
 from cart.export_types.request_data_types.add_to_cart import AddToCartRequestType
 from cart.models.cart import Cart
+from cart.serializers.cart_serializer import CartCreateUpdateSerializer
+
 
 class CartServices:
 
     @staticmethod
     def add_items_to_cart(request_data: AddToCartRequestType) -> ExportCart:
-        user = User.objects.get(id=request_data.user_id, is_deleted=False)
-        cart, _ = Cart.objects.get_or_create(user=user)
-
-        cart_items = []
+        # user = User.objects.get(id=request_data.user_id, is_deleted=False)
+        # cart, _ = Cart.objects.get_or_create(user=user)
+        # cart_items = []
 
         # for item in request_data.products:
         #     serializer = CartItemCreateUpdateSerializer(data=item)
@@ -44,4 +45,5 @@ class CartServices:
         #     created_at=cart.created_at,
         #     items=export_items
         # )
+        user_cart: ExportCart = CartCreateUpdateSerializer().create_or_update_cart_item(request_data)
         return ExportCart()
