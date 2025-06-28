@@ -1,0 +1,223 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Admin Logs{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <h1>Admin Action Logs</h1>
+    
+    <!-- Filter Form -->
+    <div class="module filtered">
+        <h2>Filters</h2>
+        <form method="get" action="{% url 'admin_logs' %}">
+            <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: end;">
+                <div>
+                    <label for="action_type">Action Type:</label>
+                    <select name="action_type" id="action_type">
+                        <option value="">All Actions</option>
+                        {% for value, label in action_types %}
+                            <option value="{{ value }}" {% if filters.action_type == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="user_id">User:</label>
+                    <select name="user_id" id="user_id">
+                        <option value="">All Users</option>
+                        {% for user in users %}
+                            <option value="{{ user.id }}" {% if filters.user_id == user.id|stringformat:"s" %}selected{% endif %}>{{ user.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label for="model_name">Model:</label>
+                    <input type="text" name="model_name" id="model_name" value="{{ filters.model_name }}" placeholder="Model name...">
+                </div>
+                
+                <div>
+                    <label for="date_from">Date From:</label>
+                    <input type="date" name="date_from" id="date_from" value="{{ filters.date_from }}">
+                </div>
+                
+                <div>
+                    <label for="date_to">Date To:</label>
+                    <input type="date" name="date_to" id="date_to" value="{{ filters.date_to }}">
+                </div>
+                
+                <div>
+                    <input type="submit" value="Filter" class="default">
+                    <a href="{% url 'admin_logs' %}" class="button">Clear</a>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Logs Table -->
+    <div class="module">
+        <h2>Admin Actions ({{ page_obj.paginator.count }} total)</h2>
+        
+        {% if page_obj %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Model</th>
+                        <th>Object</th>
+                        <th>Change Message</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in page_obj %}
+                        <tr>
+                            <td>{{ log.action_time|date:"Y-m-d H:i:s" }}</td>
+                            <td>{{ log.user.username }}</td>
+                            <td>
+                                {% if log.action_flag == 1 %}
+                                    <span style="color: green;">✓ Add</span>
+                                {% elif log.action_flag == 2 %}
+                                    <span style="color: blue;">✎ Change</span>
+                                {% elif log.action_flag == 3 %}
+                                    <span style="color: red;">✗ Delete</span>
+                                {% else %}
+                                    {{ log.action_flag }}
+                                {% endif %}
+                            </td>
+                            <td>{{ log.content_type.app_label }}.{{ log.content_type.model }}</td>
+                            <td>{{ log.object_repr|truncatechars:50 }}</td>
+                            <td>{{ log.change_message|truncatechars:100 }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+                <div class="pagination">
+                    {% if page_obj.has_previous %}
+                        <a href="?page=1{% for key, value in filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">&laquo; First</a>
+                        <a href="?page={{ page_obj.previous_page_number }}{% for key, value in filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Previous</a>
+                    {% endif %}
+                    
+                    <span class="current">
+                        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                    </span>
+                    
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% for key, value in filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Next</a>
+                        <a href="?page={{ page_obj.paginator.num_pages }}{% for key, value in filters.items %}{% if value %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Last &raquo;</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% else %}
+            <p>No admin actions found.</p>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .module {
+        margin-bottom: 20px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+    
+    .module h2 {
+        background: #f8f8f8;
+        padding: 10px;
+        margin: 0;
+        border-bottom: 1px solid #ccc;
+    }
+    
+    .filtered {
+        background: #f9f9f9;
+    }
+    
+    .filtered form {
+        padding: 15px;
+    }
+    
+    .filtered label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+    
+    .filtered select,
+    .filtered input[type="text"],
+    .filtered input[type="date"] {
+        padding: 5px;
+        border: 1px solid #ccc;
+        border-radius: 3px;
+        width: 200px;
+    }
+    
+    .filtered input[type="submit"],
+    .filtered .button {
+        padding: 8px 15px;
+        background: #417690;
+        color: white;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        margin-right: 10px;
+    }
+    
+    .filtered input[type="submit"]:hover,
+    .filtered .button:hover {
+        background: #295a6d;
+    }
+    
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+    
+    th, td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    
+    th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+    
+    tr:hover {
+        background-color: #f5f5f5;
+    }
+    
+    .pagination {
+        margin-top: 20px;
+        text-align: center;
+    }
+    
+    .pagination a {
+        padding: 8px 12px;
+        margin: 0 4px;
+        background: #417690;
+        color: white;
+        text-decoration: none;
+        border-radius: 3px;
+    }
+    
+    .pagination a:hover {
+        background: #295a6d;
+    }
+    
+    .pagination .current {
+        padding: 8px 12px;
+        margin: 0 4px;
+        background: #666;
+        color: white;
+        border-radius: 3px;
+    }
+</style>
+{% endblock %} 

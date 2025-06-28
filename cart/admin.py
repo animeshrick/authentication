@@ -11,6 +11,14 @@ class CartAdmin(admin.ModelAdmin):
 
 @admin.register(CartItem)
 class CartItemAdmin(admin.ModelAdmin):
-    list_display = ('id', 'cart', 'product', 'quantity')
+    list_display = ('id', 'user_name', 'product', 'quantity', 'cart_id')
     list_filter = ('product',)
     search_fields = ('cart__user__username', 'product__name')
+    
+    def user_name(self, obj):
+        return obj.cart.user.username if obj.cart and obj.cart.user else 'N/A'
+    user_name.short_description = 'User Name'
+    
+    def cart_id(self, obj):
+        return obj.cart.id if obj.cart else 'N/A'
+    cart_id.short_description = 'Cart ID'

@@ -11,6 +11,10 @@ from auth_api.models.user_models.user import User
 
 
 def validate_products_in_stock_all(requested_products: List[CartProductRequestType], user_id: str = None) -> bool:
+    """
+    Validate that all requested products have sufficient stock
+    This function is used for initial validation before transaction
+    """
     if not requested_products:
         raise ValidationError("Product list is empty.")
 
@@ -40,7 +44,7 @@ def validate_products_in_stock_all(requested_products: List[CartProductRequestTy
         # Get current cart reservation for this product
         current_cart_quantity = cart_reservations.get(item.product_id, 0)
         
-        # Available stock = total stock - current cart reservation
+        # Available stock = current stock + what's already in cart (since we'll be updating the cart)
         available_stock = product.stock + current_cart_quantity if product else 0
 
         if not product:
@@ -58,6 +62,45 @@ def validate_products_in_stock_all(requested_products: List[CartProductRequestTy
         raise ValidationError(errors)
 
     return True
+
+
+def validate_stock_for_single_product(product_id: str, quantity: int, user_id: str = None) -> bool:
+    """
+    Validate stock for a single product
+    """
+    try:
+        product = Product.objects.get(id=product_id)
+        
+        if not product.is_active:
+            raise ValidationError(f"Product '{product.name}' is inactive")
+        
+        # Get current cart reservation if user_id provided
+        current_cart_quantity = 0
+        if user_id:
+            try:
+                user = User.objects.get(id=user_id, is_deleted=False)
+                cart = Cart.objects.get(user=user)
+                cart_item = CartItem.objects.filter(cart=cart, product=product).first()
+                if cart_item:
+                    current_cart_quantity = cart_item.quantity
+            except (User.DoesNotExist, Cart.DoesNotExist):
+                pass
+        
+        # Available stock = current stock + what's already in cart
+        available_stock = product.stock + current_cart_quantity
+        
+        if available_stock < quantity:
+            raise ValidationError(
+                f"Product '{product.name}' has insufficient stock: {available_stock} available, but {quantity} requested."
+            )
+        
+        if quantity <= 0:
+            raise ValidationError(f"Product '{product.name}': Quantity must be greater than 0.")
+        
+        return True
+        
+    except Product.DoesNotExist:
+        raise ValidationError(f"Product with ID {product_id} not found")
 
 
 def cart_item_to_export(cart_item: CartItem) -> ExportCartItem:

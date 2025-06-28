@@ -17,9 +17,14 @@ Including another URLconf
 
 from django.contrib import admin
 from django.urls import path, include
+from pure_authentication.admin_views import admin_log_view, admin_dashboard_view, AdminLogListView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("auth/api/", include("auth_api.urls")),
     path("cart/", include("cart.urls")),
+    # Admin logging URLs
+    path("admin-logs/", admin_log_view, name="admin_logs"),
+    path("admin-dashboard/", admin_dashboard_view, name="admin_dashboard"),
+    path("admin-logs-list/", AdminLogListView.as_view(), name="admin_logs_list"),
 ]

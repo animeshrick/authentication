@@ -4,11 +4,9 @@ from product.models.category import Category
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("name", "slug", "sku", "category", "price", "stock", "is_active")
-    list_filter = ("category", "is_active", "brand")
-    search_fields = ("name", "sku", "slug", "brand")
-    prepopulated_fields = {"slug": ("name",)}
-    readonly_fields = ("sku",)
+    list_display = ("id", "name", "price", "stock", "is_active")
+    list_filter = ("is_active", "brand")
+    search_fields = ("name", "brand")
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

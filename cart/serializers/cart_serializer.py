@@ -1,6 +1,8 @@
 from rest_framework import serializers
 from typing import List, Optional
 from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
+from django.db.models import F
 
 from auth_api.models.user_models.user import User
 from cart.export_types.request_data_types.add_to_cart import AddToCartRequestType
@@ -52,21 +54,25 @@ class CartCreateUpdateSerializer(serializers.ModelSerializer):
             return False
         return True
 
+    @transaction.atomic
     def create_or_update_cart_item(self, request_data: AddToCartRequestType) -> Cart | None:
         """
-        Add or update cart items with optimized database operations
+        Add or update cart items with optimized database operations and proper transaction management
         """
-        if self.validate(request_data):
+        if not self.validate(request_data):
+            return None
+            
+        try:
             user = User.objects.get(id=request_data.user_id)
             cart, cart_created = Cart.objects.get_or_create(user=user)
 
             requested_products: List[CartProductRequestType] = request_data.products or []
             product_ids = [p.product_id for p in requested_products]
             
-            # Bulk fetch products and cart items
-            products = Product.objects.filter(id__in=product_ids)
+            # Bulk fetch products and cart items with select_for_update to prevent race conditions
+            products = Product.objects.select_for_update().filter(id__in=product_ids)
             product_map = {p.id: p for p in products}
-            cart_items = CartItem.objects.filter(cart=cart, product_id__in=product_ids)
+            cart_items = CartItem.objects.select_for_update().filter(cart=cart, product_id__in=product_ids)
             cart_item_map = {item.product_id: item for item in cart_items}
 
             # Prepare bulk operations
@@ -90,7 +96,8 @@ class CartCreateUpdateSerializer(serializers.ModelSerializer):
                     stock_adjustment = new_quantity - old_quantity
                     
                     if stock_adjustment != 0:
-                        product.stock -= stock_adjustment
+                        # Use F() expression to prevent race conditions
+                        product.stock = F('stock') - stock_adjustment
                         products_to_update.append(product)
                     
                     cart_item.quantity = new_quantity
@@ -99,16 +106,73 @@ class CartCreateUpdateSerializer(serializers.ModelSerializer):
                     # Create new cart item
                     cart_item = CartItem(cart=cart, product=product, quantity=quantity)
                     cart_items_to_create.append(cart_item)
-                    product.stock -= quantity
+                    
+                    # Use F() expression to prevent race conditions
+                    product.stock = F('stock') - quantity
                     products_to_update.append(product)
 
             # Execute bulk operations
             if products_to_update:
                 Product.objects.bulk_update(products_to_update, ["stock"])
+                
             if cart_items_to_update:
                 CartItem.objects.bulk_update(cart_items_to_update, ["quantity"])
+                
             if cart_items_to_create:
                 CartItem.objects.bulk_create(cart_items_to_create)
 
             return cart
-        return None
+            
+        except Exception as e:
+            # Transaction will be rolled back automatically
+            raise
+
+    def validate_stock_with_transaction(self, request_data: AddToCartRequestType) -> bool:
+        """
+        Validate stock availability within a transaction to prevent race conditions
+        """
+        try:
+            with transaction.atomic():
+                user = User.objects.get(id=request_data.user_id, is_deleted=False)
+                cart, _ = Cart.objects.get_or_create(user=user)
+                
+                requested_products = request_data.products or []
+                product_ids = [p.product_id for p in requested_products]
+                
+                # Get products with select_for_update to lock them
+                products = Product.objects.select_for_update().filter(id__in=product_ids)
+                product_map = {p.id: p for p in products}
+                
+                # Get current cart items
+                cart_items = CartItem.objects.select_for_update().filter(cart=cart, product_id__in=product_ids)
+                cart_reservations = {item.product_id: item.quantity for item in cart_items}
+                
+                # Validate stock for each product
+                for product_data in requested_products:
+                    product = product_map.get(product_data.product_id)
+                    quantity = int(product_data.quantity or 0)
+                    
+                    if not product:
+                        raise serializers.ValidationError(f"Product with ID {product_data.product_id} not found")
+                    
+                    if not product.is_active:
+                        raise serializers.ValidationError(f"Product '{product.name}' is inactive")
+                    
+                    # Get current cart reservation for this product
+                    current_cart_quantity = cart_reservations.get(product_data.product_id, 0)
+                    
+                    # Calculate available stock (current stock + what's already in cart)
+                    available_stock = product.stock + current_cart_quantity
+                    
+                    if available_stock < quantity:
+                        raise serializers.ValidationError(
+                            f"Product '{product.name}' has insufficient stock: {available_stock} available, but {quantity} requested."
+                        )
+                    
+                    if quantity <= 0:
+                        raise serializers.ValidationError(f"Product '{product.name}': Quantity must be greater than 0.")
+                
+                return True
+                
+        except Exception as e:
+            return False

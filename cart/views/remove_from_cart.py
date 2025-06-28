@@ -7,6 +7,7 @@ from rest_framework.views import APIView
 from auth_api.services.helpers import validate_user_uid
 from cart.services.cart_services import CartServices
 from auth_api.services.handlers.exception_handlers import ExceptionHandler
+from cart.export_types.request_data_types.remove_from_cart import RemoveFromCartRequestType
 
 
 class RemoveFromCartView(APIView):
@@ -14,20 +15,15 @@ class RemoveFromCartView(APIView):
 
     def post(self, request: Request):
         try:
-            user_id = request.data.get("user_id")
-            product_id = request.data.get("product_id")
-
-            if not user_id:
-                raise ValueError("user_id is required")
-
-            if not product_id:
-                raise ValueError("product_id is required")
-
-            if not validate_user_uid(uid=user_id).is_validated:
+            # Validate request data using Pydantic model
+            request_data = RemoveFromCartRequestType(**request.data)
+            
+            if not validate_user_uid(uid=str(request_data.user_id)).is_validated:
                 raise ValueError("Invalid user_id format")
 
             result = CartServices.remove_item_from_cart(
-                user_id=user_id, product_id=product_id
+                user_id=str(request_data.user_id), 
+                product_id=str(request_data.product_id)
             )
 
             return Response(

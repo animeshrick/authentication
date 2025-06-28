@@ -13,12 +13,22 @@ class CartServices:
         """
         Add items to user's cart with validation and stock management
         """
-        cart = CartCreateUpdateSerializer().create_or_update_cart_item(request_data)
-        
-        if cart is None:
-            raise ValueError("Failed to add items to cart")
-        
-        return cart_to_export(cart)
+        try:
+            serializer = CartCreateUpdateSerializer()
+            
+            # Use the improved stock validation method
+            if not serializer.validate_stock_with_transaction(request_data):
+                raise ValueError("Stock validation failed")
+            
+            cart = serializer.create_or_update_cart_item(request_data)
+            
+            if cart is None:
+                raise ValueError("Failed to add items to cart")
+            
+            return cart_to_export(cart)
+            
+        except Exception as e:
+            raise
 
     @staticmethod
     def get_user_cart(user_id: str) -> ExportCart:
@@ -54,17 +64,20 @@ class CartServices:
             
             from cart.models.cart_item import CartItem
             from product.models.product import Product
+            from django.db import transaction
             
-            cart_item = CartItem.objects.get(cart=cart, product_id=product_id)
-            product = cart_item.product
-            
-            # Restore stock
-            restored_quantity = cart_item.quantity
-            product.stock += restored_quantity
-            product.save()
-            
-            # Remove cart item
-            cart_item.delete()
+            with transaction.atomic():
+                # Use select_for_update to prevent race conditions
+                cart_item = CartItem.objects.select_for_update().get(cart=cart, product_id=product_id)
+                product = Product.objects.select_for_update().get(id=product_id)
+                
+                # Restore stock
+                restored_quantity = cart_item.quantity
+                product.stock += restored_quantity
+                product.save()
+                
+                # Remove cart item
+                cart_item.delete()
             
             return cart_to_export(cart)
             
@@ -81,17 +94,21 @@ class CartServices:
             cart = Cart.objects.get(user=user)
             
             from cart.models.cart_item import CartItem
-            cart_items = CartItem.objects.filter(cart=cart).select_related('product')
+            from django.db import transaction
             
-            # Restore stock for all items
-            for cart_item in cart_items:
-                product = cart_item.product
-                restored_quantity = cart_item.quantity
-                product.stock += restored_quantity
-                product.save()
-            
-            # Clear all cart items
-            cart_items.delete()
+            with transaction.atomic():
+                # Use select_for_update to prevent race conditions
+                cart_items = CartItem.objects.select_for_update().filter(cart=cart).select_related('product')
+                
+                # Restore stock for all items
+                for cart_item in cart_items:
+                    product = cart_item.product
+                    restored_quantity = cart_item.quantity
+                    product.stock += restored_quantity
+                    product.save()
+                
+                # Clear all cart items
+                cart_items.delete()
             
             return cart_to_export(cart)
             
