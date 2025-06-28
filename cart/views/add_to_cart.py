@@ -16,16 +16,28 @@ class AddToCartView(APIView):
     def post(self, request: Request):
         try:
             user_id = request.data.get("user_id")
-            if validate_user_uid(uid=user_id).is_validated:
-                export_cart = CartServices.add_items_to_cart(request_data=AddToCartRequestType(**request.data))
+
+            if not user_id:
+                raise ValueError("user_id is required")
+
+            if not validate_user_uid(uid=user_id).is_validated:
+                raise ValueError("Invalid user_id format")
+
+            result = CartServices.add_items_to_cart(
+                request_data=AddToCartRequestType(**request.data)
+            )
+
+            if result:
                 return Response(
                     data={
                         "message": "Products added to cart successfully.",
-                        "data": export_cart.dict(),
+                        "data": result.model_dump(),
                     },
                     status=status.HTTP_201_CREATED,
-                    content_type="application/json"
+                    content_type="application/json",
                 )
+            else:
+                raise ValueError("Failed to add items to cart")
 
         except Exception as e:
-            return ExceptionHandler().handle_exception(e)
+            return ExceptionHandler().handle_exception(e) 

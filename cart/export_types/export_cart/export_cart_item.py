@@ -1,18 +1,24 @@
-from typing import List, Optional
+from typing import Optional
+import uuid
+from decimal import Decimal
 from pydantic import BaseModel
 
 class ExportCartItem(BaseModel):
-    id: Optional[str] = None
-    product_id: Optional[str] = None
+    id: Optional[uuid.UUID] = None
+    product_id: Optional[uuid.UUID] = None
     product_name: Optional[str] = None
-    product_price: Optional[str] = None
+    product_price: Optional[Decimal] = None
+    product_sku: Optional[str] = None
+    product_slug: Optional[str] = None
     category: Optional[str] = None
     brand: Optional[str] = None
-    quantity: Optional[str] = None
-    stock_left: Optional[str] = None
-    is_active: bool
-    is_available: bool
-    total_price: float
-    line_discount: float
-    final_price: float
+    quantity: int = 1
+    stock_left: int = 0
+    is_active: bool = True
+    is_available: bool = True
+    total_price: Optional[Decimal] = None
+    line_discount: Optional[Decimal] = None
+    final_price: Optional[Decimal] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
 
