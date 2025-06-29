@@ -26,6 +26,7 @@ class Product(GenericBaseModel):
     category = models.ForeignKey(Category, related_name='products', on_delete=models.CASCADE)
     brand = models.CharField(max_length=100, blank=True, null=True)
     is_active = models.BooleanField(default=True)
+    discount = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Discount percentage (e.g., 10 for 10%)", blank=True, null=True)
 
     @property
     def is_out_of_stock(self):
@@ -51,4 +52,11 @@ class Product(GenericBaseModel):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return self.name 
+        return self.name
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["price"]),
+            models.Index(fields=["category"]),
+            models.Index(fields=["discount"]),
+        ] 

@@ -8,6 +8,7 @@ from cart.models.cart import Cart
 from cart.models.cart_item import CartItem
 from product.models.product import Product
 from auth_api.models.user_models.user import User
+from cart.models.order_summary import OrderSummary
 
 
 def validate_products_in_stock_all(requested_products: List[CartProductRequestType], user_id: str = None) -> bool:
@@ -115,22 +116,21 @@ def cart_item_to_export(cart_item: CartItem) -> ExportCartItem:
     
     quantity = cart_item.quantity
     price = cart_item.product.price
+    discount = cart_item.product.discount or 0
     
     # Calculate prices
     total_price = price * quantity
     
-    # Apply discount logic (5% discount for 3+ items)
-    line_discount = Decimal('0.00')
-    if quantity >= 3:
-        line_discount = total_price * Decimal('0.05')
-    
-    final_price = total_price - line_discount
+    # Apply product discount (percentage)
+    discount_amount = total_price * (Decimal(discount) / Decimal('100'))
+    final_price = total_price - discount_amount
     
     return ExportCartItem(
         id=cart_item_data.get('id'),
         product_id=cart_item.product.id,
         product_name=product_data.get('name'),
         product_price=price,
+        product_discount=discount,
         product_sku=product_data.get('sku'),
         product_slug=product_data.get('slug'),
         category=cart_item.product.category.name if cart_item.product.category else None,
@@ -139,9 +139,6 @@ def cart_item_to_export(cart_item: CartItem) -> ExportCartItem:
         stock_left=product_data.get('stock'),
         is_active=product_data.get('is_active'),
         is_available=product_data.get('is_active') and product_data.get('stock', 0) >= 0,
-        total_price=total_price,
-        line_discount=line_discount,
-        final_price=final_price,
         created_at=str(cart_item_data.get('created_at')),
         updated_at=str(cart_item_data.get('updated_at'))
     )
@@ -149,7 +146,8 @@ def cart_item_to_export(cart_item: CartItem) -> ExportCartItem:
 
 def cart_to_export(cart: Cart) -> ExportCart:
     """
-    Convert Cart model to ExportCart using model_to_dict()
+    Convert Cart model to ExportCart using model_to_dict(), and calculate OrderSummary.
+    Persist OrderSummary in the database for this cart.
     """
     # Get cart data using model_to_dict()
     cart_data = cart.model_to_dict()
@@ -160,13 +158,58 @@ def cart_to_export(cart: Cart) -> ExportCart:
     # Convert cart items to export format
     export_items = [cart_item_to_export(item) for item in cart_items]
     
+    # Calculate cart summary values
+    total_amount = 0
+    total_discount = 0
+    total_items = len(export_items)
+    total_quantity = len(cart_items)
+    for item, cart_item in zip(export_items, cart_items):
+        quantity = cart_item.quantity
+        price = cart_item.product.price
+        discount = cart_item.product.discount or 0
+        item_total = price * quantity
+        discount_amount = item_total * (Decimal(discount) / Decimal('100'))
+        total_amount += item_total
+        total_discount += discount_amount
+    # Example: shipping charge and round off logic (customize as needed)
+    shipping_charge = 0
+    round_of_val = round(total_amount - total_discount) - (total_amount - total_discount)
+    can_cod = 'Y'
+    # Persist OrderSummary in DB (update or create for this cart)
+    order_summary_obj, _ = OrderSummary.objects.update_or_create(
+        id=getattr(cart, 'order_summary_id', None),
+        defaults={
+            'cart_amount': total_amount,
+            'cart_item_discount': total_discount,
+            'shipping_charge': shipping_charge,
+            'round_of_val': round_of_val,
+            'can_cod': can_cod,
+            'total_items': total_items,
+            'total_quantity': total_quantity,
+            'currency': 'INR',
+        }
+    )
+    # Optionally, link the summary to the cart if you add a OneToOneField
+    # cart.order_summary = order_summary_obj
+    # cart.save()
+    # Prepare export dict
+    order_summary = {
+        'cart_amount': order_summary_obj.cart_amount,
+        'cart_item_discount': order_summary_obj.cart_item_discount,
+        'shipping_charge': order_summary_obj.shipping_charge,
+        'round_of_val': order_summary_obj.round_of_val,
+        'can_cod': order_summary_obj.can_cod,
+        'total_items': order_summary_obj.total_items,
+        'total_quantity': order_summary_obj.total_quantity,
+        'currency': order_summary_obj.currency,
+    }
     # Extract user_id from the User object (foreign key returns the object)
     user_id = cart.user.id if cart.user else None
-    
     return ExportCart(
         id=cart_data.get('id'),
         user_id=user_id,
         items=export_items,
+        order_summary=order_summary,
         created_at=cart_data.get('created_at'),
         updated_at=cart_data.get('updated_at')
     )

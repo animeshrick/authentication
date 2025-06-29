@@ -16,9 +16,7 @@ class ExportCartItem(BaseModel):
     stock_left: int = 0
     is_active: bool = True
     is_available: bool = True
-    total_price: Optional[Decimal] = None
-    line_discount: Optional[Decimal] = None
-    final_price: Optional[Decimal] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+    product_discount: Optional[Decimal] = None
 

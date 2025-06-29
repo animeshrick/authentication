@@ -4,6 +4,7 @@ from cart.export_types.request_data_types.add_to_cart import AddToCartRequestTyp
 from cart.models.cart import Cart
 from cart.serializers.cart_serializer import CartCreateUpdateSerializer
 from cart.services.cart_helper import cart_to_export
+from rest_framework import serializers
 
 
 class CartServices:
@@ -17,13 +18,14 @@ class CartServices:
             serializer = CartCreateUpdateSerializer()
             
             # Use the improved stock validation method
-            if not serializer.validate_stock_with_transaction(request_data):
-                raise ValueError("Stock validation failed")
+            validation_result = serializer.validate_stock_with_transaction(request_data)
+            if validation_result is not True:
+                raise serializers.ValidationError(validation_result)
             
             cart = serializer.create_or_update_cart_item(request_data)
             
             if cart is None:
-                raise ValueError("Failed to add items to cart")
+                raise serializers.ValidationError("Failed to add items to cart")
             
             return cart_to_export(cart)
             

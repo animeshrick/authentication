@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 import datetime
 import uuid
 from pydantic import BaseModel
@@ -8,6 +8,7 @@ class ExportCart(BaseModel):
     id: Optional[uuid.UUID] = None
     user_id: uuid.UUID
     items: List[ExportCartItem] = []
+    order_summary: Optional[Dict] = None
     created_at: Optional[datetime.datetime] = None
     updated_at: Optional[datetime.datetime] = None
 

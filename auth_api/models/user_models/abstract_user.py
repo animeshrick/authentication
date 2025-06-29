@@ -26,6 +26,10 @@ class AbstractUser(GenericBaseModel):
 
     class Meta:
         abstract = True
+        indexes = [
+            models.Index(fields=["email"]),
+            models.Index(fields=["username"]),
+        ]
 
     def __str__(self):
         return self.email

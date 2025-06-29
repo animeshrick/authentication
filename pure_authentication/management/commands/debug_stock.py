@@ -60,6 +60,8 @@ class Command(BaseCommand):
             self.stdout.write(f"\n=== Product Stock Analysis ===")
             self.stdout.write(f"Product: {product.name} (ID: {product.id})")
             self.stdout.write(f"Current Stock: {product.stock}")
+            self.stdout.write(f"Price: {product.price}")
+            self.stdout.write(f"Discount: {product.discount}%")
             self.stdout.write(f"Total Reserved in Carts: {total_reserved}")
             self.stdout.write(f"Available for Purchase: {product.stock + total_reserved}")
             

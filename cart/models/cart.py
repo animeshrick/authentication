@@ -7,3 +7,8 @@ class Cart(GenericBaseModel):
 
     def __str__(self):
         return f"Cart {self.id} for user {self.user.id}"
+
+    class Meta:
+        indexes = [
+            models.Index(fields=["user"]),
+        ]

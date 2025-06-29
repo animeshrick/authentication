@@ -8,6 +8,9 @@ class Category(GenericBaseModel):
 
     class Meta:
         verbose_name_plural = "Categories"
+        indexes = [
+            models.Index(fields=["name"]),
+        ]
 
     def __str__(self):
         return self.name
