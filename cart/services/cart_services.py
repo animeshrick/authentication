@@ -1,6 +1,7 @@
 from auth_api.models.user_models.user import User
 from cart.export_types.export_cart.export_cart import ExportCart
 from cart.export_types.request_data_types.add_to_cart import AddToCartRequestType
+from cart.export_types.request_data_types.add_item import AddItemRequestType
 from cart.models.cart import Cart
 from cart.serializers.cart_serializer import CartCreateUpdateSerializer
 from cart.services.cart_helper import cart_to_export
@@ -145,3 +146,43 @@ class CartServices:
             }
         except Product.DoesNotExist:
             return {"error": "Product not found"}
+
+    @staticmethod
+    def add_single_item_to_cart(request_data: AddItemRequestType) -> ExportCart:
+        """
+        Add a single item to user's cart with validation and stock management
+        """
+        try:
+            # Convert single item request to multi-item format for existing logic
+            from cart.export_types.request_data_types.add_to_cart import AddToCartRequestType
+            from cart.export_types.request_data_types.cart_product import CartProductRequestType
+            
+            # Create a single product request
+            product_request = CartProductRequestType(
+                product_id=request_data.product_id,
+                quantity=int(request_data.quantity)
+            )
+            
+            # Create multi-item request format
+            multi_item_request = AddToCartRequestType(
+                user_id=request_data.user_id,
+                products=[product_request]
+            )
+            
+            # Use existing logic
+            serializer = CartCreateUpdateSerializer()
+            
+            # Validate stock
+            validation_result = serializer.validate_stock_with_transaction(multi_item_request)
+            if validation_result is not True:
+                raise serializers.ValidationError(validation_result)
+            
+            cart = serializer.create_or_update_cart_item(multi_item_request)
+            
+            if cart is None:
+                raise serializers.ValidationError("Failed to add item to cart")
+            
+            return cart_to_export(cart)
+            
+        except Exception as e:
+            raise
