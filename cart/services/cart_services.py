@@ -11,25 +11,39 @@ from rest_framework import serializers
 class CartServices:
 
     @staticmethod
+    def _get_user_and_cart(user_id):
+        """
+        Helper to fetch user and cart, creates cart if not found.
+        """
+        user = User.objects.get(id=user_id, is_deleted=False)
+        cart, _ = Cart.objects.get_or_create(user=user)
+        return user, cart
+
+    @staticmethod
     def add_items_to_cart(request_data: AddToCartRequestType) -> ExportCart:
         """
         Add items to user's cart with validation and stock management
+        If the request is a subset of the current cart, do not update the cart, just return the current cart.
         """
         try:
+            user, cart = CartServices._get_user_and_cart(request_data.user_id)
+            from cart.models.cart_item import CartItem
+            # Get current cart product IDs
+            current_cart_items = CartItem.objects.filter(cart=cart)
+            current_product_ids = set(str(item.product_id) for item in current_cart_items)
+            request_product_ids = set(str(p.product_id) for p in (request_data.products or []))
+            # If request is a subset, return current cart using get_user_cart
+            if not request_product_ids.issuperset(current_product_ids):
+                return CartServices.get_user_cart(str(user.id))
             serializer = CartCreateUpdateSerializer()
-            
             # Use the improved stock validation method
             validation_result = serializer.validate_stock_with_transaction(request_data)
             if validation_result is not True:
                 raise serializers.ValidationError(validation_result)
-            
             cart = serializer.create_or_update_cart_item(request_data)
-            
             if cart is None:
                 raise serializers.ValidationError("Failed to add items to cart")
-            
             return cart_to_export(cart)
-            
         except Exception as e:
             raise
 
@@ -39,17 +53,9 @@ class CartServices:
         Get cart details for a specific user
         """
         try:
-            user = User.objects.get(id=user_id, is_deleted=False)
-            cart = Cart.objects.get(user=user)
+            user, cart = CartServices._get_user_and_cart(user_id)
             return cart_to_export(cart)
         except (User.DoesNotExist, Cart.DoesNotExist):
-            # Return empty cart using model_to_dict() pattern
-            empty_cart_data = {
-                "id": None,
-                "user": user_id,
-                "created_at": None,
-                "updated_at": None
-            }
             return ExportCart(
                 user_id=user_id,
                 items=[],
@@ -62,8 +68,7 @@ class CartServices:
         Remove a specific item from user's cart and restore stock
         """
         try:
-            user = User.objects.get(id=user_id, is_deleted=False)
-            cart = Cart.objects.get(user=user)
+            user, cart = CartServices._get_user_and_cart(user_id)
             
             from cart.models.cart_item import CartItem
             from product.models.product import Product
@@ -93,8 +98,7 @@ class CartServices:
         Clear entire cart and restore all stock
         """
         try:
-            user = User.objects.get(id=user_id, is_deleted=False)
-            cart = Cart.objects.get(user=user)
+            user, cart = CartServices._get_user_and_cart(user_id)
             
             from cart.models.cart_item import CartItem
             from django.db import transaction
@@ -150,39 +154,37 @@ class CartServices:
     @staticmethod
     def add_single_item_to_cart(request_data: AddItemRequestType) -> ExportCart:
         """
-        Add a single item to user's cart with validation and stock management
+        Add a single item to user's cart with validation and stock management.
+        If the item is already in the cart, do not update the cart, just return the current cart.
         """
         try:
+            user, cart = CartServices._get_user_and_cart(request_data.user_id)
+            from cart.models.cart_item import CartItem
+            # Check if the product is already in the cart
+            if CartItem.objects.filter(cart=cart, product_id=request_data.product_id).exists():
+                return CartServices.get_user_cart(str(user.id))
             # Convert single item request to multi-item format for existing logic
             from cart.export_types.request_data_types.add_to_cart import AddToCartRequestType
             from cart.export_types.request_data_types.cart_product import CartProductRequestType
-            
             # Create a single product request
             product_request = CartProductRequestType(
                 product_id=request_data.product_id,
                 quantity=int(request_data.quantity)
             )
-            
             # Create multi-item request format
             multi_item_request = AddToCartRequestType(
                 user_id=request_data.user_id,
                 products=[product_request]
             )
-            
             # Use existing logic
             serializer = CartCreateUpdateSerializer()
-            
             # Validate stock
             validation_result = serializer.validate_stock_with_transaction(multi_item_request)
             if validation_result is not True:
                 raise serializers.ValidationError(validation_result)
-            
             cart = serializer.create_or_update_cart_item(multi_item_request)
-            
             if cart is None:
                 raise serializers.ValidationError("Failed to add item to cart")
-            
             return cart_to_export(cart)
-            
         except Exception as e:
             raise

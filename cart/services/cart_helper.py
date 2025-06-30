@@ -162,7 +162,7 @@ def cart_to_export(cart: Cart) -> ExportCart:
     total_amount = 0
     total_discount = 0
     total_items = len(export_items)
-    total_quantity = len(cart_items)
+    total_quantity = sum(cart_item.quantity for cart_item in cart_items)
     for item, cart_item in zip(export_items, cart_items):
         quantity = cart_item.quantity
         price = cart_item.product.price
@@ -174,7 +174,7 @@ def cart_to_export(cart: Cart) -> ExportCart:
     # Example: shipping charge and round off logic (customize as needed)
     shipping_charge = 0
     round_of_val = round(total_amount - total_discount) - (total_amount - total_discount)
-    can_cod = 'Y'
+    can_cod = '' if total_items == 0 else 'Y'
     # Persist OrderSummary in DB (update or create for this cart)
     order_summary_obj, _ = OrderSummary.objects.update_or_create(
         id=getattr(cart, 'order_summary_id', None),
