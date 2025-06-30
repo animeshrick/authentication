@@ -166,25 +166,20 @@ LOGGING = {
             'filename': BASE_DIR / 'logs' / 'admin_actions.log',
             'formatter': 'admin_action',
         },
-        'admin_file': {
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs' / 'django_admin.log',
-            'formatter': 'verbose',
-        },
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'admin_file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': True,
         },
         'django.request': {
-            'handlers': ['console', 'admin_file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
         'django.security': {
-            'handlers': ['console', 'admin_file'],
+            'handlers': ['console'],
             'level': 'INFO',
             'propagate': False,
         },
