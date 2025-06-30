@@ -102,6 +102,8 @@ Here are some possible plans and steps to implement the `add_to_cart` feature:
 - **Get Cart Service**
     - Retrieve all items in the user's cart, with product details and totals.
 
+** Live URL: https://authentication-01s3.onrender.com **
+
 ### 3. API Endpoints
 - `POST /cart/add/` — Add a product to the cart (requires product_id, quantity)
 - `POST /cart/remove/` — Remove or decrement a product from the cart
