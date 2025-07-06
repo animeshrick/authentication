@@ -29,4 +29,4 @@ class ExportProduct(BaseModel):
 
 
 class ExportProductList(BaseModel):
-    subject_list: List[ExportProduct]
+    product_list: List[ExportProduct]

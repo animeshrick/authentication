@@ -32,7 +32,7 @@ class ProductService:
             raise DatabaseError()
         if subjects:
             all_product = ExportProductList(
-                subject_list=[
+                product_list=[
                     ExportProduct(**subject.model_to_dict())
                     for subject in subjects
                 ]
