@@ -35,6 +35,7 @@ def readme_view(request):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("auth/api/", include("auth_api.urls")),
+    path("product/", include("product.urls")),
     path("cart/", include("cart.urls")),
     # Admin logging URLs
     path("admin-logs/", admin_log_view, name="admin_logs"),
