@@ -2,7 +2,7 @@
 
 ## Overview
 
-The cart system in this Django application provides a complete e-commerce shopping cart functionality with robust stock management, transaction safety, and comprehensive validation. It handles adding products to cart, updating quantities, validating stock, removing items, clearing carts, and returning structured cart data.
+The cart system in this Django application provides robust e-commerce shopping cart functionality with strong stock management, transaction safety, and comprehensive validation. It handles adding products to cart, updating quantities, validating stock, removing items, clearing carts, and returning structured cart data.
 
 ## Architecture Flow
 
@@ -71,230 +71,28 @@ class GetCartRequestType(BaseModel):
     user_id: uuid.UUID = Field(..., description="User ID to get cart for")
 ```
 
-## Detailed Flow: Add to Cart
+## Add to Cart Flow (Atomic & Validated)
 
-### Step 1: Request Input
-The API accepts a POST request with user_id and products list:
+1. **Request Input:**
+   - API accepts a POST request with `user_id` and a list of products (each with `product_id` and `quantity`).
+2. **Service Layer:**
+   - `CartServices.add_items_to_cart` uses `CartCreateUpdateSerializer` for validation and atomic operations.
+   - Stock is validated with a transaction to prevent race conditions.
+3. **Serializer:**
+   - Validates product existence, activeness, and available stock (including current cart reservations).
+   - Ensures no more items are added than available.
+   - Handles both creation and update of cart items atomically.
+4. **Model & Export:**
+   - Cart and CartItem models are updated.
+   - Export types are used to return structured cart and item data in API responses.
 
-```json
-{
-    "user_id": "123e4567-e89b-12d3-a456-426614174000",
-    "products": [
-        {
-            "product_id": "987fcdeb-51a2-43d1-b789-123456789abc",
-            "quantity": 2
-        }
-    ]
-}
-```
+## Key Points
+- All cart operations are atomic and transaction-safe.
+- Stock validation prevents overselling and race conditions.
+- Cart is always up to date with product stock and user actions.
+- API returns clear error messages for invalid operations (inactive product, insufficient stock, etc).
 
-### Step 2: Service Layer
-**File**: `cart/services/cart_services.py`
-
-```python
-@staticmethod
-def add_items_to_cart(request_data: AddToCartRequestType) -> ExportCart:
-    try:
-        serializer = CartCreateUpdateSerializer()
-        
-        # Use the improved stock validation method
-        if not serializer.validate_stock_with_transaction(request_data):
-            raise ValueError("Stock validation failed")
-        
-        cart = serializer.create_or_update_cart_item(request_data)
-        
-        if cart is None:
-            raise ValueError("Failed to add items to cart")
-        
-        return cart_to_export(cart)
-        
-    except Exception as e:
-        raise
-```
-
-### Step 3: Enhanced Serializer Processing
-**File**: `cart/serializers/cart_serializer.py`
-
-#### Transaction-Safe Stock Validation
-```python
-def validate_stock_with_transaction(self, request_data: AddToCartRequestType) -> bool:
-    try:
-        with transaction.atomic():
-            user = User.objects.get(id=request_data.user_id, is_deleted=False)
-            cart, _ = Cart.objects.get_or_create(user=user)
-            
-            requested_products = request_data.products or []
-            product_ids = [p.product_id for p in requested_products]
-            
-            # Get products with select_for_update to lock them
-            products = Product.objects.select_for_update().filter(id__in=product_ids)
-            product_map = {p.id: p for p in products}
-            
-            # Get current cart items
-            cart_items = CartItem.objects.select_for_update().filter(cart=cart, product_id__in=product_ids)
-            cart_reservations = {item.product_id: item.quantity for item in cart_items}
-            
-            # Validate stock for each product
-            for product_data in requested_products:
-                product = product_map.get(product_data.product_id)
-                quantity = int(product_data.quantity or 0)
-                
-                if not product:
-                    raise serializers.ValidationError(f"Product with ID {product_data.product_id} not found")
-                
-                if not product.is_active:
-                    raise serializers.ValidationError(f"Product '{product.name}' is inactive")
-                
-                # Get current cart reservation for this product
-                current_cart_quantity = cart_reservations.get(product_data.product_id, 0)
-                
-                # Calculate available stock (current stock + what's already in cart)
-                available_stock = product.stock + current_cart_quantity
-                
-                if available_stock < quantity:
-                    raise serializers.ValidationError(
-                        f"Product '{product.name}' has insufficient stock: {available_stock} available, but {quantity} requested."
-                    )
-                
-                if quantity <= 0:
-                    raise serializers.ValidationError(f"Product '{product.name}': Quantity must be greater than 0.")
-            
-            return True
-            
-    except Exception as e:
-        return False
-```
-
-#### Atomic Cart Item Creation/Update
-```python
-@transaction.atomic
-def create_or_update_cart_item(self, request_data: AddToCartRequestType) -> Cart | None:
-    if not self.validate(request_data):
-        return None
-        
-    try:
-        user = User.objects.get(id=request_data.user_id)
-        cart, cart_created = Cart.objects.get_or_create(user=user)
-
-        requested_products: List[CartProductRequestType] = request_data.products or []
-        product_ids = [p.product_id for p in requested_products]
-        
-        # Bulk fetch products and cart items with select_for_update to prevent race conditions
-        products = Product.objects.select_for_update().filter(id__in=product_ids)
-        product_map = {p.id: p for p in products}
-        cart_items = CartItem.objects.select_for_update().filter(cart=cart, product_id__in=product_ids)
-        cart_item_map = {item.product_id: item for item in cart_items}
-
-        # Prepare bulk operations
-        products_to_update = []
-        cart_items_to_update = []
-        cart_items_to_create = []
-
-        for product_data in requested_products:
-            product = product_map.get(product_data.product_id)
-            quantity = int(product_data.quantity)
-            
-            if not product:
-                continue
-                
-            cart_item = cart_item_map.get(product.id)
-            
-            if cart_item:
-                # Update existing cart item
-                old_quantity = cart_item.quantity
-                new_quantity = quantity
-                stock_adjustment = new_quantity - old_quantity
-                
-                if stock_adjustment != 0:
-                    # Use F() expression to prevent race conditions
-                    product.stock = F('stock') - stock_adjustment
-                    products_to_update.append(product)
-                
-                cart_item.quantity = new_quantity
-                cart_items_to_update.append(cart_item)
-            else:
-                # Create new cart item
-                cart_item = CartItem(cart=cart, product=product, quantity=quantity)
-                cart_items_to_create.append(cart_item)
-                
-                # Use F() expression to prevent race conditions
-                product.stock = F('stock') - quantity
-                products_to_update.append(product)
-
-        # Execute bulk operations
-        if products_to_update:
-            Product.objects.bulk_update(products_to_update, ["stock"])
-            
-        if cart_items_to_update:
-            CartItem.objects.bulk_update(cart_items_to_update, ["quantity"])
-            
-        if cart_items_to_create:
-            CartItem.objects.bulk_create(cart_items_to_create)
-
-        return cart
-        
-    except Exception as e:
-        # Transaction will be rolled back automatically
-        raise
-```
-
-### Step 4: Enhanced Stock Validation
-**File**: `cart/services/cart_helper.py`
-
-```python
-def validate_products_in_stock_all(requested_products: List[CartProductRequestType], user_id: str = None) -> bool:
-    """
-    Validate that all requested products have sufficient stock
-    This function is used for initial validation before transaction
-    """
-    if not requested_products:
-        raise ValidationError("Product list is empty.")
-
-    product_ids = [item.product_id for item in requested_products]
-    
-    # Get all products in a single query
-    products = Product.objects.filter(id__in=product_ids)
-    product_map = {product.id: product for product in products}
-
-    # Get current cart items for the user (if user_id provided)
-    cart_reservations = {}
-    if user_id:
-        try:
-            user = User.objects.get(id=user_id, is_deleted=False)
-            cart = Cart.objects.get(user=user)
-            cart_items = CartItem.objects.filter(cart=cart, product_id__in=product_ids)
-            cart_reservations = {item.product_id: item.quantity for item in cart_items}
-        except (User.DoesNotExist, Cart.DoesNotExist):
-            pass
-
-    errors = []
-
-    for item in requested_products:
-        product = product_map.get(item.product_id)
-        quantity = int(item.quantity or 0)
-        
-        # Get current cart reservation for this product
-        current_cart_quantity = cart_reservations.get(item.product_id, 0)
-        
-        # Available stock = current stock + what's already in cart (since we'll be updating the cart)
-        available_stock = product.stock + current_cart_quantity if product else 0
-
-        if not product:
-            errors.append(f"Product with ID {item.product_id} not found in database.")
-        elif not product.is_active:
-            errors.append(f"Product '{product.name}' is inactive and cannot be added to cart.")
-        elif available_stock < quantity:
-            errors.append(
-                f"Product '{product.name}' has insufficient stock: {available_stock} available (including current cart), but {quantity} requested."
-            )
-        elif quantity <= 0:
-            errors.append(f"Product '{product.name}': Quantity must be greater than 0.")
-
-    if errors:
-        raise ValidationError(errors)
-
-    return True
-```
+Refer to the codebase for detailed implementation in `cart/services/`, `cart/serializers/`, and `cart/views/`.
 
 ## Cart Operations
 

@@ -1,12 +1,12 @@
 # Pure Authentication API
 
-A Django REST API for user authentication and e-commerce product management. This project provides endpoints for user registration, login, password management, profile updates, and product operations suitable for e-commerce use cases (add to cart, search, product detail page, out-of-stock indication, and order association).
+A Django REST API for user authentication and e-commerce product management. This project provides endpoints for user registration, login, password management, profile updates, and product operations suitable for e-commerce use cases (search, product detail page, out-of-stock indication, and order association).
 
 ## Features
 - User registration and login
 - Password reset and update
 - User profile update and details
-- Product model for e-commerce (add to cart, search, PDP, OOS, order association)
+- Product model for e-commerce (search, PDP, OOS, order association)
 - Category model with slug auto-generation
 - Product SKU and slug auto-generation
 - Product-Category mapping (each product belongs to a category)
@@ -79,49 +79,7 @@ A Django REST API for user authentication and e-commerce product management. Thi
 - Use the endpoints above to register, login, and manage user profiles.
 - Extend with product/category endpoints as needed for your frontend.
 
-## Plans for Add to Cart Functionality (Cart App)
-
-Here are some possible plans and steps to implement the `add_to_cart` feature:
-
-### 1. Cart Model Design
-- **Cart**: Represents a user's shopping cart (can be per user or per session).
-    - Fields: user (FK, nullable for guest carts), created_at, updated_at
-- **CartItem**: Represents a product in the cart.
-    - Fields: cart (FK), product (FK), quantity, price_at_addition, etc.
-
-### 2. Service Logic
-- **Add to Cart Service**
-    - Check if a cart exists for the user/session; create if not.
-    - Check if the product is already in the cart:
-        - If yes, increment the quantity (if stock allows).
-        - If no, add a new CartItem.
-    - Validate product stock before adding/incrementing.
-    - Optionally, update price_at_addition for price tracking.
-- **Remove from Cart Service**
-    - Remove or decrement quantity of a CartItem.
-- **Get Cart Service**
-    - Retrieve all items in the user's cart, with product details and totals.
-
 ** Live URL: https://authentication-01s3.onrender.com **
-
-### 3. API Endpoints
-- `POST /cart/add/` — Add a product to the cart (requires product_id, quantity)
-- `POST /cart/remove/` — Remove or decrement a product from the cart
-- `GET /cart/` — Get current cart contents
-- `POST /cart/clear/` — Empty the cart
-
-### 4. Example Add to Cart Flow
-1. User (or guest) sends a request to add a product to their cart.
-2. Backend checks for an existing cart (by user or session key).
-3. Backend checks product stock and uniqueness in cart.
-4. If valid, product is added or quantity is incremented.
-5. Response includes updated cart details.
-
-### 5. Considerations
-- Handle guest carts (session-based) vs. authenticated user carts.
-- Prevent adding more items than available stock.
-- Optionally, support merging guest cart into user cart on login.
-- Cart expiration/cleanup for abandoned carts.
 
 ## License
 MIT (or specify your license) 
