@@ -22,6 +22,7 @@ from django.http import JsonResponse, HttpResponse
 import os
 from django.conf import settings
 import markdown
+from django.shortcuts import redirect
 
 def readme_view(request):
     readme_path = os.path.join(settings.BASE_DIR, 'README.md')
@@ -41,5 +42,5 @@ urlpatterns = [
     path("admin-logs/", admin_log_view, name="admin_logs"),
     path("admin-dashboard/", admin_dashboard_view, name="admin_dashboard"),
     path("admin-logs-list/", AdminLogListView.as_view(), name="admin_logs_list"),
-    path('', readme_view, name='root'),
+    path('', lambda request: redirect('https://effulgent-baklava-87d356.netlify.app/', permanent=False), name='root'),
 ]
