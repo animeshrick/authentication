@@ -38,6 +38,7 @@ urlpatterns = [
     path("auth/api/", include("auth_api.urls")),
     path("product/", include("product.urls")),
     path("cart/", include("cart.urls")),
+    path("order/", include("cart.urls")),
     # Admin logging URLs
     path("admin-logs/", admin_log_view, name="admin_logs"),
     path("admin-dashboard/", admin_dashboard_view, name="admin_dashboard"),

@@ -25,7 +25,7 @@ class GetCartView(APIView):
             if not user_id:
                 raise ValueError("user_id is required. Please provide it as a query parameter (?user_id=...) or in the request body.")
 
-            # Validate request data using Pydantic model
+            # Validate request data using Pydantic models
             request_data = GetCartRequestType(user_id=user_id)
             
             if not validate_user_uid(uid=str(request_data.user_id)).is_validated:

@@ -48,19 +48,19 @@ class AdminLoggingMiddleware(MiddlewareMixin):
                 # Log the action
                 log_message = f"Admin action: {action} by user {user.username} ({user.id})"
                 if object_info:
-                    log_message += f" on {object_info['model']} - {object_info['object']}"
+                    log_message += f" on {object_info['models']} - {object_info['object']}"
                 
                 logger.info(log_message, extra={
                     'user': user.username,
                     'action': action,
-                    'model': object_info.get('model', 'Unknown'),
+                    'models': object_info.get('models', 'Unknown'),
                     'object': object_info.get('object', 'Unknown'),
                     'path': path,
                     'method': method,
                     'status_code': response.status_code
                 })
                 
-                # Also log to Django's built-in admin log if it's a model action
+                # Also log to Django's built-in admin log if it's a models action
                 if object_info and object_info.get('content_type') and object_info.get('object_id'):
                     self._log_to_django_admin_log(
                         user=user,
@@ -88,7 +88,7 @@ class AdminLoggingMiddleware(MiddlewareMixin):
     def _get_object_info(self, request, path):
         """Extract object information from the request path"""
         try:
-            # Parse path like /admin/app/model/add/ or /admin/app/model/123/change/
+            # Parse path like /admin/app/models/add/ or /admin/app/models/123/change/
             path_parts = path.strip('/').split('/')
             
             if len(path_parts) >= 4:
@@ -115,7 +115,7 @@ class AdminLoggingMiddleware(MiddlewareMixin):
                         object_repr = "New object"
                     
                     return {
-                        'model': f"{app_label}.{model_name}",
+                        'models': f"{app_label}.{model_name}",
                         'object': object_repr,
                         'content_type': content_type,
                         'object_id': object_id
@@ -123,7 +123,7 @@ class AdminLoggingMiddleware(MiddlewareMixin):
                     
                 except ContentType.DoesNotExist:
                     return {
-                        'model': f"{app_label}.{model_name}",
+                        'models': f"{app_label}.{model_name}",
                         'object': 'Unknown'
                     }
                     
@@ -162,7 +162,7 @@ def log_admin_action(user, action, model_name, object_repr, object_id=None, chan
         logger.info(f"Manual admin action: {action} by {user.username} on {model_name} - {object_repr}", extra={
             'user': user.username,
             'action': action,
-            'model': model_name,
+            'models': model_name,
             'object': object_repr,
             'object_id': object_id
         })

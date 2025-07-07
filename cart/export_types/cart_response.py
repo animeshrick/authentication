@@ -8,7 +8,7 @@ from cart.export_types.export_cart.export_cart import ExportCart
 
 class CartSuccessResponse(SuccessResponse):
     """
-    Cart-specific success response model
+    Cart-specific success response models
     """
     data: Optional[ExportCart] = None
     cart_id: Optional[str] = None

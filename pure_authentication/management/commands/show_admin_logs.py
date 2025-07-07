@@ -21,9 +21,9 @@ class Command(BaseCommand):
             help='Filter by username'
         )
         parser.add_argument(
-            '--model',
+            '--models',
             type=str,
-            help='Filter by model name'
+            help='Filter by models name'
         )
         parser.add_argument(
             '--days',
@@ -63,8 +63,8 @@ class Command(BaseCommand):
         if options['user']:
             logs = logs.filter(user__username__icontains=options['user'])
         
-        if options['model']:
-            logs = logs.filter(content_type__model__icontains=options['model'])
+        if options['models']:
+            logs = logs.filter(content_type__model__icontains=options['models'])
         
         # Apply limit
         logs = logs[:options['limit']]

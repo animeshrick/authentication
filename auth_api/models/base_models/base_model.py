@@ -21,5 +21,5 @@ class GenericBaseModel(models.Model):
                 field.name: getattr(self, field.name) for field in self._meta.fields
             }
         except Exception:
-            logging.error("Error occurred  while converting model to dict")
-            raise FieldError("Error occurred  while converting model to dict")
+            logging.error("Error occurred  while converting models to dict")
+            raise FieldError("Error occurred  while converting models to dict")

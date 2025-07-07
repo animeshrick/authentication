@@ -154,7 +154,7 @@ LOGGING = {
             'style': '{',
         },
         'admin_action': {
-            'format': '[ADMIN ACTION] {asctime} - User: {user} - Action: {action} - Model: {model} - Object: {object}',
+            'format': '[ADMIN ACTION] {asctime} - User: {user} - Action: {action} - Model: {models} - Object: {object}',
             'style': '{',
         },
     },

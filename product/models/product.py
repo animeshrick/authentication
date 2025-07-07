@@ -9,7 +9,7 @@ from product.models.category import Category
 
 class Product(GenericBaseModel):
     """
-    Product model for e-commerce use cases:
+    Product models for e-commerce use cases:
     - Add to cart
     - Search
     - Show Product Detail Page (PDP)

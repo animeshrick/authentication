@@ -15,7 +15,7 @@ class RemoveFromCartView(APIView):
 
     def post(self, request: Request):
         try:
-            # Validate request data using Pydantic model
+            # Validate request data using Pydantic models
             request_data = RemoveFromCartRequestType(**request.data)
             
             if not validate_user_uid(uid=str(request_data.user_id)).is_validated:

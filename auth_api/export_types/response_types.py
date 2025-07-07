@@ -5,7 +5,7 @@ from datetime import datetime
 
 class ErrorResponse(BaseModel):
     """
-    Generic error response model for all API endpoints
+    Generic error response models for all API endpoints
     """
     success: bool = False
     error: str
@@ -17,7 +17,7 @@ class ErrorResponse(BaseModel):
 
 class SuccessResponse(BaseModel):
     """
-    Generic success response model for all API endpoints
+    Generic success response models for all API endpoints
     """
     success: bool = True
     message: str

@@ -106,7 +106,7 @@ def validate_stock_for_single_product(product_id: str, quantity: int, user_id: s
 
 def cart_item_to_export(cart_item: CartItem) -> ExportCartItem:
     """
-    Convert CartItem model to ExportCartItem using model_to_dict()
+    Convert CartItem models to ExportCartItem using model_to_dict()
     """
     # Get cart item data using model_to_dict()
     cart_item_data = cart_item.model_to_dict()
@@ -146,7 +146,7 @@ def cart_item_to_export(cart_item: CartItem) -> ExportCartItem:
 
 def cart_to_export(cart: Cart) -> ExportCart:
     """
-    Convert Cart model to ExportCart using model_to_dict(), and calculate OrderSummary.
+    Convert Cart models to ExportCart using model_to_dict(), and calculate OrderSummary.
     Persist OrderSummary in the database for this cart.
     """
     # Get cart data using model_to_dict()

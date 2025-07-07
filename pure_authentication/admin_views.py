@@ -69,7 +69,7 @@ def admin_log_view(request):
     users = User.objects.filter(is_staff=True).order_by('username')
     content_types = ContentType.objects.filter(
         id__in=logs.values_list('content_type', flat=True).distinct()
-    ).order_by('app_label', 'model')
+    ).order_by('app_label', 'models')
     
     context = {
         'page_obj': page_obj,
@@ -190,7 +190,7 @@ class AdminLogListView(ListView):
         
         # Add filter options
         context['users'] = User.objects.filter(is_staff=True).order_by('username')
-        context['content_types'] = ContentType.objects.all().order_by('app_label', 'model')
+        context['content_types'] = ContentType.objects.all().order_by('app_label', 'models')
         context['action_types'] = [
             ('add', 'Add'),
             ('change', 'Change'),
