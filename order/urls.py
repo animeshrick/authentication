@@ -1,9 +1,6 @@
 from django.urls import path
-
-from product.view.get_all_products import AllProductView
-from product.view.get_product import GetProductView
+from order.view.get_all_orders import OrderView
 
 urlpatterns = [
-    path("all_order", AllProductView.as_view(), name="All-order"),
-    path("place_order", GetProductView.as_view(), name="Place-Order"),
+    path('orders/', OrderView.as_view(), name='orders'),  # Handles both GET (list/detail) and POST (create)
 ]

@@ -1,37 +1,26 @@
-from rest_framework import status
-from rest_framework.renderers import JSONRenderer
-from rest_framework.response import Response
 from rest_framework.views import APIView
-
-from auth_api.services.handlers.exception_handlers import ExceptionHandler
+from rest_framework.response import Response
+from rest_framework import status
 from order.services.order_service import OrderService
-from product.export_types.product_types.export_product import ExportProductList
-from product.services.product_service import ProductService
 
-
-class AllProductView(APIView):
-    renderer_classes = [JSONRenderer]
-
-    def get(self, _):
+class OrderView(APIView):
+    def get(self, request):
+        order_id = request.query_params.get('id')
         try:
-            all_order = OrderService().get_all_order_service()
-            if all_order and isinstance(all_order, ExportProductList):
-                return Response(
-                    data={
-                        "data": all_order.model_dump(),
-                        "message": None,
-                    },
-                    status=status.HTTP_200_OK,
-                    content_type="application/json",
-                )
-            else:
-                return Response(
-                    data={
-                        "data": {"user_list": []},
-                        "message": "Currently we arr shortage of products",
-                    },
-                    status=status.HTTP_200_OK,
-                    content_type="application/json",
-                )
+            if order_id:
+                order = OrderService().get_order_by_id(order_id)
+                if not order:
+                    return Response({"error": "Order not found"}, status=status.HTTP_404_NOT_FOUND)
+                return Response(order)
+            
+            orders = OrderService().get_all_orders()
+            return Response(orders)
         except Exception as e:
-            return ExceptionHandler().handle_exception(e)
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def post(self, request):
+        try:
+            order = OrderService().create_order_from_cart(request.user)
+            return Response(order, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
