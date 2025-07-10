@@ -82,3 +82,11 @@ class Order(GenericBaseModel):
             self.save()
             return True
         return False
+
+    def save(self, *args, **kwargs):
+        # Auto-calculate total_amount if not set or if order items exist
+        if self.pk and (self.total_amount is None or self.total_amount == 0):
+            total = self.get_total_value()
+            # if total:
+            self.total_amount = total
+        super().save(*args, **kwargs)
