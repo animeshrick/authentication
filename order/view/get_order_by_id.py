@@ -4,7 +4,7 @@ from rest_framework import status
 from order.services.order_service import OrderService
 
 
-class GetAllOrderView(APIView):
+class GetOrderByIdView(APIView):
     def get(self, request):
         order_id = request.query_params.get('id')
         try:
